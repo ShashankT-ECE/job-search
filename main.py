@@ -6,7 +6,7 @@ Stages:
   2. Gemini rank → scored & filtered jobs        (--rank)
   3. Gemini tailor → per-job tailored resume     (--tailor)
   4. RenderCV render → PDF resumes               (--build-resume)
-  5. Streamlit dashboard → UI for browsing       (future)
+  5. Streamlit dashboard → UI for browsing       (--dashboard)
 """
 
 import argparse
@@ -42,7 +42,7 @@ def main():
     parser.add_argument(
         "--dashboard",
         action="store_true",
-        help="(Future) Launch the Streamlit dashboard",
+        help="Launch the Streamlit dashboard (local web UI)",
     )
 
     args, unknown = parser.parse_known_args()
@@ -113,10 +113,19 @@ def main():
         finally:
             sys.argv = original_argv
 
-    # ── Future stubs ─────────────────────────────────────────────────
+    # ── Dashboard ───────────────────────────────────────────────────
     if args.dashboard:
-        print("Streamlit dashboard — not yet implemented.")
-        sys.exit(1)
+        import subprocess
+
+        app_path = Path(__file__).resolve().parent / "app.py"
+        print(f"Launching Streamlit dashboard...")
+        print(f"  App: {app_path}")
+        print(f"  Open http://localhost:8501 in your browser.")
+        print(f"  Press Ctrl+C to stop.\n")
+        subprocess.run(
+            [sys.executable, "-m", "streamlit", "run", str(app_path)],
+            cwd=str(Path(__file__).resolve().parent),
+        )
 
 
 if __name__ == "__main__":
