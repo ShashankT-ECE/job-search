@@ -1,5 +1,5 @@
 """
-jobsearch.tailor — Select best-fit resume bullets via Gemini and render tailored PDFs.
+jobsearch.tailor — Select best-fit resume bullets via DeepSeek and render tailored PDFs.
 
 Usage:
     python -m jobsearch.tailor
@@ -8,7 +8,7 @@ Usage:
     python -m jobsearch.tailor --dry-run
 
 Environment:
-    GEMINI_API_KEY in .env file
+    DEEPSEEK_API_KEY in .env file
 """
 
 import argparse
@@ -42,8 +42,8 @@ OUTPUT_DIR = RESUME_DIR / "output"
 DEFAULT_DB = PROJECT_ROOT / "outputs" / "jobs.db"
 DEFAULT_RESUME = RESUME_DIR / "master_cv.yaml"
 
-MODEL_NAME = "gemini-2.0-flash"
-RATE_LIMIT_DELAY = 4.1
+MODEL_NAME = "deepseek-chat"
+RATE_LIMIT_DELAY = 1.0
 DEFAULT_MIN_SCORE = 80
 
 # RenderCV design — same as baseline builder
@@ -66,7 +66,7 @@ DESIGN_SECTION = {
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Pydantic schemas for Gemini structured output
+# Pydantic schemas for DeepSeek structured output
 # ──────────────────────────────────────────────────────────────────────
 
 class BulletSelection(BaseModel):
@@ -79,9 +79,6 @@ class TailorSelection(BaseModel):
     experience_selections: list[BulletSelection]
     project_selections: list[BulletSelection]
 
-
-# Pre-compute the JSON schema for the API
-TAILOR_JSON_SCHEMA = TailorSelection.model_json_schema()
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -148,7 +145,7 @@ def build_menu(data: dict) -> dict:
 
 
 def format_menu_for_prompt(menu: dict) -> str:
-    """Render the menu as a readable text block for the Gemini prompt."""
+    """Render the menu as a readable text block for the DeepSeek prompt."""
     lines = []
 
     lines.append("=== AVAILABLE SUMMARIES ===")
@@ -177,33 +174,30 @@ def format_menu_for_prompt(menu: dict) -> str:
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Gemini setup
+# DeepSeek setup
 # ──────────────────────────────────────────────────────────────────────
 
-def init_gemini():
-    """Initialize the Gemini client and config for structured output."""
+def init_deepseek():
+    """Initialize the OpenAI client pointed at DeepSeek."""
     env_path = PROJECT_ROOT / ".env"
     if env_path.exists():
         load_dotenv(env_path)
 
-    api_key = os.getenv("GEMINI_API_KEY")
+    api_key = os.getenv("DEEPSEEK_API_KEY")
     if not api_key:
-        print("ERROR: GEMINI_API_KEY not found.")
+        print("ERROR: DEEPSEEK_API_KEY not found.")
         print("  1. Create .env: cp .env.example .env")
-        print("  2. Add key: GEMINI_API_KEY=your_key_here")
-        print("  3. Get a key: https://aistudio.google.com/apikey")
+        print("  2. Add key: DEEPSEEK_API_KEY=sk-...")
+        print("  3. Get a key: https://platform.deepseek.com/api_keys")
         sys.exit(1)
 
-    from google import genai
-    from google.genai import types
+    from openai import OpenAI
 
-    client = genai.Client(api_key=api_key)
-    config = types.GenerateContentConfig(
-        response_mime_type="application/json",
-        response_json_schema=TAILOR_JSON_SCHEMA,
-        temperature=0.3,
+    client = OpenAI(
+        api_key=api_key,
+        base_url="https://api.deepseek.com",
     )
-    return client, config
+    return client
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -245,13 +239,25 @@ TAILOR_PROMPT = textwrap.dedent("""\
 
     {description}
 
-    === OUTPUT ===
-    Return a JSON object with your selections following the schema.
+    === OUTPUT FORMAT ===
+    You MUST respond with ONLY a valid JSON object. No markdown, no code fences.
+    The JSON must follow this exact schema:
+    {
+      "selected_summary_id": "<summary id from menu>",
+      "experience_selections": [
+        {"entry_id": "<experience entry id>", "selected_bullet_ids": ["<bullet id>", ...]}
+      ],
+      "project_selections": [
+        {"entry_id": "<project entry id>", "selected_bullet_ids": ["<bullet id>", ...]}
+      ]
+    }
+    Include EVERY experience and project entry from the menu, even if
+    selected_bullet_ids is an empty list for irrelevant entries.
     """)
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Gemini call with retry
+# DeepSeek call with retry
 # ──────────────────────────────────────────────────────────────────────
 
 @retry(
@@ -260,8 +266,8 @@ TAILOR_PROMPT = textwrap.dedent("""\
     wait=wait_exponential(multiplier=3, min=5, max=60),
     reraise=False,
 )
-def call_tailor(client, config, menu_text: str, job: dict) -> dict | None:
-    """Call Gemini to select the best bullets. Returns parsed TailorSelection or None."""
+def call_tailor(client, menu_text: str, job: dict) -> dict | None:
+    """Call DeepSeek to select the best bullets. Returns parsed TailorSelection or None."""
     prompt = TAILOR_PROMPT.format(
         menu=menu_text,
         title=job.get("title", "Unknown"),
@@ -270,13 +276,15 @@ def call_tailor(client, config, menu_text: str, job: dict) -> dict | None:
         description=job.get("description") or "(No description provided)",
     )
 
-    response = client.models.generate_content(
+    response = client.chat.completions.create(
         model=MODEL_NAME,
-        contents=prompt,
-        config=config,
+        messages=[{"role": "user", "content": prompt}],
+        response_format={"type": "json_object"},
+        temperature=0.3,
     )
 
-    result = json.loads(response.text)
+    content = response.choices[0].message.content
+    result = json.loads(content)
     # Validate with Pydantic
     return TailorSelection.model_validate(result)
 
@@ -599,13 +607,13 @@ def run_tailoring(
         return {"total_candidates": total_candidates, "tailored": 0, "errors": 0}
 
     if mock:
-        print("MOCK MODE — using hardcoded selections (no Gemini API call).\n")
-        client = config = None  # not used in mock mode
+        print("MOCK MODE — using hardcoded selections (no DeepSeek API call).\n")
+        client = None  # not used in mock mode
     else:
-        # Init Gemini
-        print("Initializing Gemini...")
-        client, config = init_gemini()
-        print(f"  Model: {MODEL_NAME} (structured JSON output)\n")
+        # Init DeepSeek
+        print("Initializing DeepSeek...")
+        client = init_deepseek()
+        print(f"  Model: {MODEL_NAME} (JSON mode)\n")
 
     # Ensure output directory
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -648,11 +656,11 @@ def run_tailoring(
             }
 
             try:
-                # Select bullets (Gemini API or mock)
+                # Select bullets (DeepSeek API or mock)
                 if mock:
                     selection = _mock_selection()
                 else:
-                    selection = call_tailor(client, config, menu_text, job_dict)
+                    selection = call_tailor(client, menu_text, job_dict)
 
                 if selection is None:
                     print("FAILED (no selection returned)")
@@ -718,14 +726,14 @@ def run_tailoring(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Tailor resumes for high-scoring jobs using Gemini"
+        description="Tailor resumes for high-scoring jobs using DeepSeek"
     )
     parser.add_argument("--db", type=Path, default=DEFAULT_DB, help="Path to SQLite database")
     parser.add_argument("--resume", type=Path, default=DEFAULT_RESUME, help="Path to master_cv.yaml")
     parser.add_argument("--limit", "-n", type=int, default=None, help="Only tailor N jobs")
     parser.add_argument("--min-score", type=int, default=DEFAULT_MIN_SCORE, help="Minimum match_score threshold")
     parser.add_argument("--dry-run", action="store_true", help="Validate setup without API calls")
-    parser.add_argument("--mock", action="store_true", help="Use hardcoded selections instead of Gemini (for testing assembly)")
+    parser.add_argument("--mock", action="store_true", help="Use hardcoded selections instead of DeepSeek (for testing assembly)")
     args = parser.parse_args()
 
     stats = run_tailoring(

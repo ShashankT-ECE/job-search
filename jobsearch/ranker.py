@@ -1,5 +1,5 @@
 """
-jobsearch.ranker — Score scraped jobs against your master resume using Gemini.
+jobsearch.ranker — Score scraped jobs against your master resume using DeepSeek.
 
 Usage:
     python -m jobsearch.ranker
@@ -7,11 +7,7 @@ Usage:
     python -m jobsearch.ranker --dry-run   # validate setup without API calls
 
 Environment:
-    GEMINI_API_KEY in .env file (or export GEMINI_API_KEY=...)
-
-Rate limit:
-    Free tier: 15 RPM. We sleep 4.1s between calls (~14.6 RPM).
-    On 429 errors, tenacity retries with exponential backoff.
+    DEEPSEEK_API_KEY in .env file (or export DEEPSEEK_API_KEY=...)
 """
 
 import argparse
@@ -41,30 +37,19 @@ DEFAULT_DB = PROJECT_ROOT / "outputs" / "jobs.db"
 DEFAULT_RESUME = PROJECT_ROOT / "resume" / "master_cv.yaml"
 DEFAULT_ENV = PROJECT_ROOT / ".env"
 
-# Model to use — must support structured JSON output
-# See https://ai.google.dev/gemini-api/docs/models for current availability
-MODEL_NAME = "gemini-2.0-flash"
+# DeepSeek model (OpenAI-compatible API)
+MODEL_NAME = "deepseek-chat"
 
-# Rate limit: 15 RPM free tier → 4.1s between calls (~14.6 RPM)
-RATE_LIMIT_DELAY = 4.1
+# Rate limit: DeepSeek has generous limits, 1s delay is polite
+RATE_LIMIT_DELAY = 1.0
 
-# ──────────────────────────────────────────────────────────────────────
-# Schema for Gemini structured output
-# ──────────────────────────────────────────────────────────────────────
-SCORE_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "score": {
-            "type": "integer",
-            "description": "Match score from 0 (no fit) to 100 (perfect fit)",
-        },
-        "reason": {
-            "type": "string",
-            "description": "One-sentence justification for the score, citing specific skill overlaps or gaps",
-        },
-    },
-    "required": ["score", "reason"],
-}
+# JSON output instruction appended to the prompt
+JSON_FORMAT_INSTRUCTION = (
+    "You MUST respond with ONLY a valid JSON object. "
+    "No markdown, no code fences, no extra text. "
+    'The JSON object must have exactly these keys: {"score": integer, "reason": string}. '
+    "Score is an integer from 0 to 100.\n"
+)
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -147,33 +132,27 @@ def load_resume_text(resume_path: Path = None) -> str:
     return "\n".join(lines)
 
 
-def init_gemini():
-    """Load API key, configure the SDK, and return a client + config tuple."""
-    # Load .env
+def init_deepseek():
+    """Load API key, create OpenAI client pointed at DeepSeek."""
     env_path = PROJECT_ROOT / ".env"
     if env_path.exists():
         load_dotenv(env_path)
 
-    api_key = os.getenv("GEMINI_API_KEY")
+    api_key = os.getenv("DEEPSEEK_API_KEY")
     if not api_key:
-        print("ERROR: GEMINI_API_KEY not found.")
+        print("ERROR: DEEPSEEK_API_KEY not found.")
         print("  1. Create a .env file: cp .env.example .env")
-        print("  2. Add your API key: GEMINI_API_KEY=your_key_here")
-        print("  3. Get a key at: https://aistudio.google.com/apikey")
+        print("  2. Add your key: DEEPSEEK_API_KEY=sk-...")
+        print("  3. Get a key at: https://platform.deepseek.com/api_keys")
         sys.exit(1)
 
-    from google import genai
-    from google.genai import types
+    from openai import OpenAI
 
-    client = genai.Client(api_key=api_key)
-
-    config = types.GenerateContentConfig(
-        response_mime_type="application/json",
-        response_json_schema=SCORE_SCHEMA,
-        temperature=0.3,
+    client = OpenAI(
+        api_key=api_key,
+        base_url="https://api.deepseek.com",
     )
-
-    return client, config
+    return client
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -203,12 +182,6 @@ RANKING_PROMPT = textwrap.dedent("""\
     3. Seniority/experience level match (intern vs entry-level vs senior)
     4. Overall viability — can this candidate realistically land this role?
 
-    Output a JSON object with:
-    - "score": integer from 0 to 100
-    - "reason": one concise sentence explaining the score in plain English.
-      Cite specific matches or gaps (e.g., "Strong SystemVerilog/UVM overlap but
-      role requires 3+ years experience vs candidate's internship level").
-
     --- CANDIDATE RESUME ---
     {resume}
 
@@ -228,8 +201,8 @@ RANKING_PROMPT = textwrap.dedent("""\
     retry_error_callback=lambda retry_state: (0, f"Retry exhausted: {retry_state.outcome.exception()}"),
     reraise=False,
 )
-def score_job(client, config, resume_text: str, job: dict) -> tuple[int, str]:
-    """Call Gemini to score a single job. Returns (score, reason)."""
+def score_job(client, resume_text: str, job: dict) -> tuple[int, str]:
+    """Call DeepSeek to score a single job. Returns (score, reason)."""
     prompt = RANKING_PROMPT.format(
         resume=resume_text,
         title=job.get("title", "Unknown"),
@@ -237,15 +210,19 @@ def score_job(client, config, resume_text: str, job: dict) -> tuple[int, str]:
         location=job.get("location", "Unknown"),
         description=job.get("description") or "(No description provided)",
     )
+    # Prepend JSON format instruction
+    prompt = JSON_FORMAT_INSTRUCTION + "\n" + prompt
 
-    response = client.models.generate_content(
+    response = client.chat.completions.create(
         model=MODEL_NAME,
-        contents=prompt,
-        config=config,
+        messages=[{"role": "user", "content": prompt}],
+        response_format={"type": "json_object"},
+        temperature=0.3,
     )
 
-    # Parse structured JSON response
-    result = json.loads(response.text)
+    # Parse JSON response
+    content = response.choices[0].message.content
+    result = json.loads(content)
     score = int(result.get("score", 0))
     reason = str(result.get("reason", ""))
     # Clamp score to valid range
@@ -297,10 +274,10 @@ def run_ranking(
         print("DRY RUN — skipping API calls. Setup OK.\n")
         return {"total_unscored": total_unscored, "scored": 0, "errors": 0, "skipped": 0}
 
-    # Init Gemini
-    print("Initializing Gemini...")
-    client, config = init_gemini()
-    print(f"  Model: {MODEL_NAME} (structured JSON output)\n")
+    # Init DeepSeek
+    print("Initializing DeepSeek...")
+    client = init_deepseek()
+    print(f"  Model: {MODEL_NAME} (JSON mode)\n")
 
     # Iterate and score
     scored = 0
@@ -338,7 +315,7 @@ def run_ranking(
             }
 
             try:
-                score, reason = score_job(client, config, resume_text, job_dict)
+                score, reason = score_job(client, resume_text, job_dict)
                 conn.execute(
                     "UPDATE jobs SET match_score = ? WHERE id = ?",
                     (score, job_id),
@@ -355,12 +332,11 @@ def run_ranking(
                 exc_msg = str(exc)[:120]
                 print(f"ERROR: {exc_name}: {exc_msg}")
 
-                # If we hit a quota wall, don't keep banging on the API
-                if "429" in exc_msg or "ResourceExhausted" in exc_name or "quota" in exc_msg.lower():
+                # If we hit repeated errors, don't keep hammering the API
+                if "429" in exc_msg or "Rate" in exc_name or "quota" in exc_msg.lower():
                     if errors >= 3:
-                        print("\n  ⚠️  Repeated quota errors — API key may have exhausted its daily limit.")
-                        print("  → Verify your key at https://aistudio.google.com/apikey")
-                        print("  → Free tier: 1,500 requests/day. Billing may need to be enabled.")
+                        print("\n  ⚠️  Repeated rate-limit errors — stopping.")
+                        print("  → Check your DeepSeek account balance at https://platform.deepseek.com")
                         print("  → Resuming later will skip already-scored jobs.\n")
                         conn.commit()
                         break
@@ -368,8 +344,8 @@ def run_ranking(
                 # Still commit progress so far
                 conn.commit()
 
-            # Rate limit: sleep between every call
-            if idx < total_unscored - 1:  # no need to sleep after the last one
+            # Polite delay between calls
+            if idx < total_unscored - 1:
                 time.sleep(RATE_LIMIT_DELAY)
 
     finally:
@@ -385,34 +361,26 @@ def run_ranking(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Score scraped jobs against your master resume using Gemini"
+        description="Score scraped jobs against your master resume using DeepSeek"
     )
     parser.add_argument(
-        "--db",
-        type=Path,
-        default=DEFAULT_DB,
+        "--db", type=Path, default=DEFAULT_DB,
         help=f"Path to SQLite database (default: {DEFAULT_DB})",
     )
     parser.add_argument(
-        "--resume",
-        type=Path,
-        default=DEFAULT_RESUME,
+        "--resume", type=Path, default=DEFAULT_RESUME,
         help=f"Path to master resume YAML (default: {DEFAULT_RESUME})",
     )
     parser.add_argument(
-        "--limit", "-n",
-        type=int,
-        default=None,
+        "--limit", "-n", type=int, default=None,
         help="Only score N jobs (useful for testing)",
     )
     parser.add_argument(
-        "--dry-run",
-        action="store_true",
+        "--dry-run", action="store_true",
         help="Validate setup without making API calls",
     )
     args = parser.parse_args()
 
-    # ── Run ──────────────────────────────────────────────────────────
     stats = run_ranking(
         db_path=args.db,
         resume_path=args.resume,
@@ -420,7 +388,6 @@ def main():
         dry_run=args.dry_run,
     )
 
-    # ── Summary ──────────────────────────────────────────────────────
     print(f"\n{'='*60}")
     print("RANKING COMPLETE")
     print(f"{'='*60}")
@@ -429,7 +396,6 @@ def main():
     print(f"  Errors                 : {stats['errors']}")
     print(f"  Database               : {args.db.resolve()}")
 
-    # Show score distribution if any jobs scored
     if stats["scored"] > 0:
         conn = get_connection(args.db)
         try:
