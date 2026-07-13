@@ -42,7 +42,7 @@ OUTPUT_DIR = RESUME_DIR / "output"
 DEFAULT_DB = PROJECT_ROOT / "outputs" / "jobs.db"
 DEFAULT_RESUME = RESUME_DIR / "master_cv.yaml"
 
-MODEL_NAME = "deepseek-v4-flash"
+MODEL_NAME = "deepseek-v4-pro"
 RATE_LIMIT_DELAY = 1.0
 DEFAULT_MIN_SCORE = 80
 
@@ -264,6 +264,12 @@ TAILOR_PROMPT = textwrap.dedent("""\
     }
     Include EVERY experience and project entry from the menu, even if
     selected_bullet_ids is an empty list for irrelevant entries.
+
+    CRITICAL ID RULE:
+    You are strictly forbidden from inventing, summarizing, or generating new
+    text or new IDs. You MUST ONLY select the exact `entry_id` and bullet ID
+    strings precisely as they appear in the provided menu. Copy-paste the IDs
+    character-for-character. If you hallucinate an ID, the system will fail.
     """)
 
 
@@ -403,7 +409,7 @@ def _resolve_bullet_texts(bank, bullet_ids: list[str]) -> list[str]:
         if text:
             texts.append(str(text).strip())
         else:
-            print(f"    WARNING: bullet ID '{bid}' not found in bank")
+            print(f"    WARNING: Dropping hallucinated bullet ID '{bid}' — not found in highlight_bank")
     return texts
 
 
@@ -444,7 +450,7 @@ def build_sections(data: dict, selection: TailorSelection) -> dict:
     for sel in selection.experience_selections:
         entry = _find_entry_by_id(data.get("experience", []), sel.entry_id)
         if not entry:
-            print(f"  WARNING: experience entry '{sel.entry_id}' not found in master_cv")
+            print(f"  WARNING: Dropping hallucinated experience entry_id '{sel.entry_id}' — not found in master_cv")
             continue
         highlights = _resolve_bullet_texts(entry.get("highlight_bank", []), sel.selected_bullet_ids)
         if not highlights:
@@ -489,7 +495,7 @@ def build_sections(data: dict, selection: TailorSelection) -> dict:
     for sel in selection.project_selections:
         entry = _find_entry_by_id(data.get("projects", []), sel.entry_id)
         if not entry:
-            print(f"  WARNING: project entry '{sel.entry_id}' not found in master_cv")
+            print(f"  WARNING: Dropping hallucinated project entry_id '{sel.entry_id}' — not found in master_cv")
             continue
         highlights = _resolve_bullet_texts(entry.get("highlight_bank", []), sel.selected_bullet_ids)
         if not highlights:
