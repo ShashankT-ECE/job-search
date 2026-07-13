@@ -1,0 +1,103 @@
+# master_cv.yaml.example — bullet bank format
+# Copy this to master_cv.yaml and fill in your real data.
+#
+# HOW IT WORKS:
+# - Each experience/education/project entry has a `highlight_bank` dict
+#   mapping short IDs to full bullet text.
+# - `default_highlights` lists which IDs to include in the default CV.
+# - summary_bank entries are referenced by ID; "sum_digital_verification"
+#   is the default.
+# - Run build_baseline.py to generate a valid RenderCV YAML and PDF.
+
+personal_info:
+  name: "Your Name"
+  location: "City, State"
+  email: "you@example.com"
+  phone: "+1-609-999-9994"
+  website: "https://yourwebsite.com"
+  social_networks:
+    - network: LinkedIn
+      username: "yourprofile"
+    - network: GitHub
+      username: "yourgithub"
+
+summary_bank:
+  sum_digital_verification: |
+    Experienced digital verification engineer with 5+ years in ASIC/FPGA
+    verification using SystemVerilog and UVM. Proficient in testbench
+    architecture, coverage-driven verification, and formal methods.
+
+experience:
+  - company: "TechCorp Inc."
+    position: "Senior Verification Engineer"
+    start_date: "2021-06"
+    end_date: "present"
+    location: "San Jose, CA"
+    summary: "Leading UVM-based verification for next-gen AI accelerator chips."
+    highlight_bank:
+      exp1_1: "Architected reusable UVM testbench components reducing test development time by 40%"
+      exp1_2: "Achieved 98% functional coverage on 3 tape-outs with zero escapes"
+      exp1_3: "Mentored team of 4 junior verification engineers on UVM methodology"
+      exp1_4: "Introduced formal property checking flow catching 15 corner-case bugs pre-silicon"
+    default_highlights:
+      - exp1_1
+      - exp1_2
+      - exp1_3
+
+  - company: "ChipDesign Ltd."
+    position: "Verification Engineer"
+    start_date: "2019-01"
+    end_date: "2021-05"
+    location: "Austin, TX"
+    highlight_bank:
+      exp2_1: "Developed SystemVerilog assertions for a PCIe Gen4 controller block"
+      exp2_2: "Built automated regression framework using Jenkins and in-house simulation tools"
+      exp2_3: "Collaborated with design team to close coverage on 5 complex IP blocks"
+    default_highlights:
+      - exp2_1
+      - exp2_2
+      - exp2_3
+
+education:
+  - institution: "State University"
+    area: "Electrical Engineering"
+    degree: "M.S."
+    start_date: "2017-09"
+    end_date: "2019-06"
+    location: "Austin, TX"
+    highlight_bank:
+      edu1_1: "GPA: 3.8/4.0"
+      edu1_2: "Thesis: Formal Verification of Cache Coherence Protocols"
+    default_highlights:
+      - edu1_1
+      - edu1_2
+
+  - institution: "City College"
+    area: "Electronics Engineering"
+    degree: "B.S."
+    start_date: "2013-09"
+    end_date: "2017-06"
+    highlight_bank:
+      edu2_1: "GPA: 3.6/4.0, Dean's List"
+    default_highlights:
+      - edu2_1
+
+projects:
+  - name: "Open-Source UVM Generator"
+    start_date: "2023-03"
+    end_date: "2023-08"
+    summary: "Python tool that generates UVM testbench scaffolding from IP-XACT register descriptions."
+    highlight_bank:
+      proj1_1: "300+ stars on GitHub, used by 2 startups for their verification flows"
+      proj1_2: "Supports AXI4, AHB, and custom bus protocols"
+    default_highlights:
+      - proj1_1
+      - proj1_2
+
+skills:
+  - label: "Verification"
+    details: "SystemVerilog, UVM, Formal Verification (JasperGold), Assertions (SVA), Coverage-driven verification"
+  - label: "Languages"
+    details: "SystemVerilog, Verilog, Python, C++, Tcl, Make"
+  - label: "Tools"
+    details: "VCS, Questa, Verdi, JasperGold, Jenkins, Git, Docker"
