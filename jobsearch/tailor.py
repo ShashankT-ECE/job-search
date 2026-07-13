@@ -284,9 +284,42 @@ def call_tailor(client, menu_text: str, job: dict) -> dict | None:
     )
 
     content = response.choices[0].message.content
-    result = json.loads(content)
-    # Validate with Pydantic
-    return TailorSelection.model_validate(result)
+
+    # ── Parse defensively — DeepSeek may hallucinate keys or IDs ──
+    raw_result = None
+    try:
+        raw_result = json.loads(content)
+    except json.JSONDecodeError as exc:
+        print(f"\n  ⚠️  DeepSeek returned invalid JSON. Raw response:\n{content[:800]}")
+        return None
+
+    try:
+        return TailorSelection.model_validate(raw_result)
+    except Exception as exc:
+        print(f"\n  ⚠️  Pydantic validation failed: {type(exc).__name__}: {exc}")
+        print(f"  Raw JSON from DeepSeek:\n{json.dumps(raw_result, indent=2)[:1200]}")
+        # Attempt a safe fallback: grab whatever keys exist with defaults
+        try:
+            return TailorSelection(
+                selected_summary_id=raw_result.get("selected_summary_id", ""),
+                experience_selections=[
+                    BulletSelection(
+                        entry_id=s.get("entry_id", ""),
+                        selected_bullet_ids=s.get("selected_bullet_ids", []),
+                    )
+                    for s in raw_result.get("experience_selections", [])
+                ],
+                project_selections=[
+                    BulletSelection(
+                        entry_id=s.get("entry_id", ""),
+                        selected_bullet_ids=s.get("selected_bullet_ids", []),
+                    )
+                    for s in raw_result.get("project_selections", [])
+                ],
+            )
+        except Exception as fallback_exc:
+            print(f"  ⚠️  Fallback also failed: {fallback_exc}")
+            return None
 
 
 # ──────────────────────────────────────────────────────────────────────
