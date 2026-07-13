@@ -42,7 +42,7 @@ OUTPUT_DIR = RESUME_DIR / "output"
 DEFAULT_DB = PROJECT_ROOT / "outputs" / "jobs.db"
 DEFAULT_RESUME = RESUME_DIR / "master_cv.yaml"
 
-MODEL_NAME = "deepseek-chat"
+MODEL_NAME = "deepseek-v4-flash"
 RATE_LIMIT_DELAY = 1.0
 DEFAULT_MIN_SCORE = 80
 
@@ -222,10 +222,21 @@ TAILOR_PROMPT = textwrap.dedent("""\
     3. For EVERY project entry, select a subset of bullet IDs that maximize
        relevance. Same rules: 0-5 bullets, only include what maps to the job.
 
+    CRITICAL MATCHING RULE:
+    You MUST select at least 1-2 entries for experience and projects, and at
+    least 2-3 bullets per entry from the provided menu. Do NOT leave
+    experience_selections or project_selections empty, and do NOT return empty
+    bullet lists. Even if a role doesn't perfectly align with your technical
+    baseline, choose the absolute closest matching elements from the menu.
+    Every experience entry and project entry MUST appear in your output with
+    at least some bullets selected unless truly zero overlap exists — but
+    even then, err on the side of inclusion.
+
     RULES:
-    - Prefer quality over quantity — 2-3 highly relevant bullets are better
-      than 5 loosely related ones.
-    - If an entry is completely irrelevant to the job, select an empty list.
+    - You MUST select 2-3 bullets minimum per entry unless the entry is
+      completely unrelated to the role (e.g., a volunteer leadership role
+      for a highly technical ASIC position).
+    - Do NOT return empty selected_bullet_ids for technical entries.
     - Reference IDs EXACTLY as they appear in the menu — do not invent IDs.
     - For education entries, always include all default bullets (education
       relevance is handled separately).

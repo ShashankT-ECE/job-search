@@ -38,7 +38,7 @@ DEFAULT_RESUME = PROJECT_ROOT / "resume" / "master_cv.yaml"
 DEFAULT_ENV = PROJECT_ROOT / ".env"
 
 # DeepSeek model (OpenAI-compatible API)
-MODEL_NAME = "deepseek-chat"
+MODEL_NAME = "deepseek-v4-flash"
 
 # Rate limit: DeepSeek has generous limits, 1s delay is polite
 RATE_LIMIT_DELAY = 1.0
