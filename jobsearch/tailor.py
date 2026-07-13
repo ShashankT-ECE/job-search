@@ -285,6 +285,11 @@ def call_tailor(client, menu_text: str, job: dict) -> dict | None:
 
     content = response.choices[0].message.content
 
+    # ── DEBUG: dump raw DeepSeek response ──
+    print("\n=== DEBUG: DEEPSEEK RAW RESPONSE ===")
+    print(content)
+    print("=====================================\n")
+
     # ── Parse defensively — DeepSeek may hallucinate keys or IDs ──
     raw_result = None
     try:
@@ -317,8 +322,12 @@ def call_tailor(client, menu_text: str, job: dict) -> dict | None:
                     for s in raw_result.get("project_selections", [])
                 ],
             )
+        except KeyError as key_err:
+            print(f"  ⚠️  Fallback KeyError — missing key: {key_err}")
+            print(f"  Available top-level keys: {list(raw_result.keys()) if isinstance(raw_result, dict) else 'N/A'}")
+            return None
         except Exception as fallback_exc:
-            print(f"  ⚠️  Fallback also failed: {fallback_exc}")
+            print(f"  ⚠️  Fallback also failed: {type(fallback_exc).__name__}: {fallback_exc}")
             return None
 
 
@@ -446,7 +455,7 @@ def build_sections(data: dict, selection: TailorSelection) -> dict:
     skills_entries = []
     for sk in skills_list:
         if isinstance(sk, dict) and sk.get("label") and sk.get("details"):
-            skills_entries.append({"label": sk["label"], "details": sk["details"]})
+            skills_entries.append({"label": sk.get("label", ""), "details": sk.get("details", "")})
     if skills_entries:
         sections["Skills"] = skills_entries
 
