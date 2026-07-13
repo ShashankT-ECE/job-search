@@ -264,10 +264,16 @@ TAILOR_PROMPT = textwrap.dedent("""\
     retry=retry_if_exception_type(Exception),
     stop=stop_after_attempt(4),
     wait=wait_exponential(multiplier=3, min=5, max=60),
+    retry_error_callback=lambda retry_state: None,
     reraise=False,
 )
 def call_tailor(client, menu_text: str, job: dict) -> dict | None:
-    """Call DeepSeek to select the best bullets. Returns parsed TailorSelection or None."""
+    """Call DeepSeek to select the best bullets. Returns parsed TailorSelection or None.
+
+    Every dict key access uses .get().  Every list is type-checked before
+    iteration.  Any failure prints the raw JSON and returns None so the
+    caller skips the job gracefully.
+    """
     prompt = TAILOR_PROMPT.format(
         menu=menu_text,
         title=job.get("title", "Unknown"),
@@ -285,50 +291,90 @@ def call_tailor(client, menu_text: str, job: dict) -> dict | None:
 
     content = response.choices[0].message.content
 
-    # ── DEBUG: dump raw DeepSeek response ──
+    # ── DEBUG: dump raw response immediately, before any parsing ──
     print("\n=== DEBUG: DEEPSEEK RAW RESPONSE ===")
     print(content)
     print("=====================================\n")
 
-    # ── Parse defensively — DeepSeek may hallucinate keys or IDs ──
-    raw_result = None
+    # ── Step 1: parse JSON ──
     try:
-        raw_result = json.loads(content)
+        raw = json.loads(content)
     except json.JSONDecodeError as exc:
-        print(f"\n  ⚠️  DeepSeek returned invalid JSON. Raw response:\n{content[:800]}")
+        print(f"  ⚠️  Invalid JSON: {exc}\n  Raw: {content[:800]}")
         return None
 
+    if not isinstance(raw, dict):
+        print(f"  ⚠️  Expected JSON object, got {type(raw).__name__}: {str(raw)[:500]}")
+        return None
+
+    print(f"  DEBUG: top-level keys in response: {list(raw.keys())}")
+
+    # ── Step 2: try Pydantic validation first ──
     try:
-        return TailorSelection.model_validate(raw_result)
-    except Exception as exc:
-        print(f"\n  ⚠️  Pydantic validation failed: {type(exc).__name__}: {exc}")
-        print(f"  Raw JSON from DeepSeek:\n{json.dumps(raw_result, indent=2)[:1200]}")
-        # Attempt a safe fallback: grab whatever keys exist with defaults
-        try:
-            return TailorSelection(
-                selected_summary_id=raw_result.get("selected_summary_id", ""),
-                experience_selections=[
-                    BulletSelection(
-                        entry_id=s.get("entry_id", ""),
-                        selected_bullet_ids=s.get("selected_bullet_ids", []),
-                    )
-                    for s in raw_result.get("experience_selections", [])
-                ],
-                project_selections=[
-                    BulletSelection(
-                        entry_id=s.get("entry_id", ""),
-                        selected_bullet_ids=s.get("selected_bullet_ids", []),
-                    )
-                    for s in raw_result.get("project_selections", [])
-                ],
-            )
-        except KeyError as key_err:
-            print(f"  ⚠️  Fallback KeyError — missing key: {key_err}")
-            print(f"  Available top-level keys: {list(raw_result.keys()) if isinstance(raw_result, dict) else 'N/A'}")
-            return None
-        except Exception as fallback_exc:
-            print(f"  ⚠️  Fallback also failed: {type(fallback_exc).__name__}: {fallback_exc}")
-            return None
+        return TailorSelection.model_validate(raw)
+    except Exception:
+        pass  # fall through to manual construction
+
+    # ── Step 3: manual construction — every access is defensive ──
+    try:
+        # --- summary ---
+        summary_id = str(raw.get("selected_summary_id", ""))
+
+        # --- experience selections ---
+        exp_raw = raw.get("experience_selections")
+        if not isinstance(exp_raw, list):
+            print(f"  ⚠️  'experience_selections' is {type(exp_raw).__name__} (value: {str(exp_raw)[:200]}), using []")
+            exp_raw = []
+        exp_sel = []
+        for i, s in enumerate(exp_raw):
+            if not isinstance(s, dict):
+                print(f"  ⚠️  experience_selections[{i}] is {type(s).__name__}, skipping")
+                continue
+            bullet_ids = s.get("selected_bullet_ids")
+            if not isinstance(bullet_ids, list):
+                print(f"  ⚠️  experience_selections[{i}].selected_bullet_ids is {type(bullet_ids).__name__}, using []")
+                bullet_ids = []
+            exp_sel.append(BulletSelection(
+                entry_id=str(s.get("entry_id", "")),
+                selected_bullet_ids=bullet_ids,
+            ))
+
+        # --- project selections ---
+        proj_raw = raw.get("project_selections")
+        if not isinstance(proj_raw, list):
+            print(f"  ⚠️  'project_selections' is {type(proj_raw).__name__} (value: {str(proj_raw)[:200]}), using []")
+            proj_raw = []
+        proj_sel = []
+        for i, s in enumerate(proj_raw):
+            if not isinstance(s, dict):
+                print(f"  ⚠️  project_selections[{i}] is {type(s).__name__}, skipping")
+                continue
+            bullet_ids = s.get("selected_bullet_ids")
+            if not isinstance(bullet_ids, list):
+                print(f"  ⚠️  project_selections[{i}].selected_bullet_ids is {type(bullet_ids).__name__}, using []")
+                bullet_ids = []
+            proj_sel.append(BulletSelection(
+                entry_id=str(s.get("entry_id", "")),
+                selected_bullet_ids=bullet_ids,
+            ))
+
+        return TailorSelection(
+            selected_summary_id=summary_id,
+            experience_selections=exp_sel,
+            project_selections=proj_sel,
+        )
+
+    except KeyError as key_err:
+        print(f"  ⚠️  KEYERROR — missing key: {key_err}")
+        print(f"  Top-level keys: {list(raw.keys())}")
+        for key in ["experience_selections", "project_selections"]:
+            val = raw.get(key)
+            if isinstance(val, list) and len(val) > 0 and isinstance(val[0], dict):
+                print(f"  Keys inside {key}[0]: {list(val[0].keys())}")
+        return None
+    except Exception as fallback_exc:
+        print(f"  ⚠️  Fallback exception: {type(fallback_exc).__name__}: {fallback_exc}")
+        return None
 
 
 # ──────────────────────────────────────────────────────────────────────
