@@ -1,4 +1,54 @@
-# config.yaml — job search configuration (placeholder for now)
-# search_terms: []
-# location: ""
-# weights: {}
+# config.yaml — Job Search Configuration
+# =====================================
+# Used by jobsearch/scraper.py to discover fresh jobs.
+# Future phases will add ranking weights and Gemini settings here.
+
+search:
+  terms:
+    - "RTL Design Intern"
+    - "Design Verification Trainee"
+    - "ASIC Entry Level"
+    - "Digital Design Fresher"
+    - "FPGA Engineer Intern"
+    - "Mixed Signal Trainee"
+    - "Analog Design Intern"
+    - "Firmware Intern"
+    - "Embedded Systems Trainee"
+    - "Graduate Engineer Trainee VLSI"
+
+  locations:
+    - "Bengaluru, Karnataka, India"
+    - "Hyderabad, Telangana, India"
+    - "Pune, Maharashtra, India"
+    - "Remote"
+
+  results_wanted: 15
+  hours_old: 72
+
+  # Sites to scrape — comment out any you want to skip
+  sites:
+    - linkedin
+    - indeed
+    - glassdoor
+
+  # Delay between queries (seconds) to avoid rate limiting
+  # Randomized in the range [min_delay, max_delay]
+  min_delay: 3
+  max_delay: 7
+
+# -------------------------------------------------------------------
+# Future sections (not yet implemented):
+#
+# ranking:
+#   weights:
+#     title_match: 0.3
+#     skills_match: 0.3
+#     location_match: 0.15
+#     company_prestige: 0.1
+#     freshness: 0.15
+#   threshold: 50
+#
+# gemini:
+#   model: gemini-2.5-flash
+#   temperature: 0.3
+#   max_tailored_bullets: 5
