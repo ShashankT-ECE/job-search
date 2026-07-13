@@ -4,7 +4,7 @@ job-search pipeline orchestrator.
 Stages:
   1. JobSpy scrape → raw job listings           (--scrape)
   2. Gemini rank → scored & filtered jobs        (--rank)
-  3. Gemini tailor → per-job tailored resume     (future)
+  3. Gemini tailor → per-job tailored resume     (--tailor)
   4. RenderCV render → PDF resumes               (--build-resume)
   5. Streamlit dashboard → UI for browsing       (future)
 """
@@ -37,7 +37,7 @@ def main():
     parser.add_argument(
         "--tailor",
         action="store_true",
-        help="(Future) Run Gemini resume tailoring for top-ranked jobs",
+        help="Run Gemini resume tailoring for top-ranked jobs (score >= 80)",
     )
     parser.add_argument(
         "--dashboard",
@@ -102,11 +102,18 @@ def main():
         )
         sys.exit(result.returncode)
 
-    # ── Future stubs ─────────────────────────────────────────────────
+    # ── Tailor ───────────────────────────────────────────────────────
     if args.tailor:
-        print("Tailoring via Gemini — not yet implemented.")
-        sys.exit(1)
+        from jobsearch.tailor import main as tailor_main
 
+        original_argv = sys.argv[:]
+        sys.argv = [a for a in sys.argv if a != "--tailor"]
+        try:
+            tailor_main()
+        finally:
+            sys.argv = original_argv
+
+    # ── Future stubs ─────────────────────────────────────────────────
     if args.dashboard:
         print("Streamlit dashboard — not yet implemented.")
         sys.exit(1)
