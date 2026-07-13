@@ -173,6 +173,45 @@ def format_menu_for_prompt(menu: dict) -> str:
     return "\n".join(lines)
 
 
+def _build_valid_ids_text(menu: dict) -> str:
+    """Build a concise list of every valid entry_id and bullet_id the LLM may use."""
+    lines = []
+    lines.append("AVAILABLE SYSTEM IDS YOU ARE ALLOWED TO USE:")
+
+    # Experience entry IDs
+    exp_ids = [e["entry_id"] for e in menu["experiences"]]
+    lines.append(f"- Valid Experience Entry IDs: {json.dumps(exp_ids)}")
+
+    # Experience bullet IDs (grouped by entry)
+    for e in menu["experiences"]:
+        bids = [b["id"] for b in e["available_bullets"]]
+        lines.append(f"  {e['entry_id']} bullet IDs: {json.dumps(bids)}")
+
+    # Project entry IDs
+    proj_ids = [p["entry_id"] for p in menu["projects"]]
+    lines.append(f"- Valid Project Entry IDs: {json.dumps(proj_ids)}")
+
+    # Project bullet IDs (grouped by entry)
+    for p in menu["projects"]:
+        bids = [b["id"] for b in p["available_bullets"]]
+        lines.append(f"  {p['entry_id']} bullet IDs: {json.dumps(bids)}")
+
+    # Summary IDs
+    summary_ids = [s["id"] for s in menu["summaries"]]
+    lines.append(f"- Valid Summary IDs: {json.dumps(summary_ids)}")
+
+    lines.append("")
+    lines.append(
+        "CRITICAL CONSTRAINT: You are an executive resume engineer. You are "
+        "absolutely forbidden from returning an empty selection or inventing new "
+        "IDs. Look at the job description, find the closest conceptual overlap "
+        "in the available IDs list (e.g., matching digital logic, firmware, or "
+        "hardware interfacing), and force-select them. You must return a valid "
+        "structure using ONLY the IDs provided above."
+    )
+    return "\n".join(lines)
+
+
 # ──────────────────────────────────────────────────────────────────────
 # DeepSeek setup
 # ──────────────────────────────────────────────────────────────────────
@@ -682,6 +721,9 @@ def run_tailoring(
     print("Building menu of available content...")
     menu = build_menu(data)
     menu_text = format_menu_for_prompt(menu)
+    # Prepend the allowed-IDs block so the LLM sees it first
+    valid_ids_text = _build_valid_ids_text(menu)
+    menu_text = valid_ids_text + "\n\n" + menu_text
     print(f"  Summaries: {len(menu['summaries'])}")
     print(f"  Experiences: {len(menu['experiences'])}")
     print(f"  Projects: {len(menu['projects'])}")
@@ -768,7 +810,11 @@ def run_tailoring(
                     selection = call_tailor(client, menu_text, job_dict)
 
                 if selection is None:
-                    print("FAILED (no selection returned)")
+                    print("=== DEBUG: call_tailor returned None (no valid selection) ===")
+                    print(f"  Job: {title[:100]} @ {company}")
+                    print(f"  Score: {score}")
+                    print("  Check the DeepSeek raw response above for hallucinated IDs or schema violations.")
+                    print("======================================================================")
                     errors += 1
                     conn.commit()
                     continue
