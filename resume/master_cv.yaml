@@ -1,2 +1,261 @@
-# master_cv.yaml — bullet bank (source data, NOT valid RenderCV format)
-# The user will paste their real content here.
+cv:
+  name: Shashank Tumuluri
+  location: Hyderabad, Telangana, India
+  email: tumulurishashank277@gmail.com
+  phone: "+91 9390645308"
+  links:
+    - label: LinkedIn
+      url: https://www.linkedin.com/in/shashank-tumuluri/
+    - label: GitHub
+      url: https://github.com/ShashankT-ECE
+
+summary_bank:
+  - id: sum_digital_verification
+    tags: [rtl, verification, digital, dv, functional_verification]
+    text: >
+      ECE undergraduate at CBIT Hyderabad (CGPA 9.17) with internship experience
+      in RTL Design, Functional Verification, and ASIC Design Flows. Experienced
+      in RTL-to-GDSII flows (synthesis, P&R, STA) alongside building hardware
+      automation tools and multi-agent AI frameworks for verification. Proven
+      first-principles, debug-focused approach using simulation-driven workflows
+      and AI-assisted development to accelerate verification methodologies.
+
+  - id: sum_analog_mixed_signal
+    tags: [analog, mixed_signal, cmos, device_physics]
+    text: >
+      Electronics and Communication Engineering undergraduate with coursework
+      foundations in MOS Device Physics, Analog Electronics, and Semiconductor/
+      CMOS Circuit design, alongside hands-on experience in Digital RTL Design
+      and Functional Verification. Hands-on Cadence Virtuoso exposure through
+      CMOS digital logic gate design and functional verification labs. Seeking
+      to apply a debug-focused, first-principles approach to analog and
+      mixed-signal verification challenges.
+
+  - id: sum_physical_design_vlsi
+    tags: [physical_design, pnr, sta, synthesis, ASIC]
+    text: >
+      Electronics and Communication Engineering undergraduate with strong
+      foundations in RTL Design, Digital Logic, Functional Verification, and
+      Physical Design. Experienced in ASIC design flows from RTL to GDSII,
+      including synthesis, place-and-route (P&R), and Static Timing Analysis
+      (STA). Passionate about SoC design and VLSI automation, with hands-on
+      exposure to Cadence EDA tools, Xilinx FPGA platforms, and Cocotb-based
+      verification environments.
+
+  - id: sum_ai_eda_generalist
+    tags: [ai, eda, automation, agentic, tooling]
+    text: >
+      ECE undergraduate (CGPA 9.17) building at the intersection of VLSI and
+      AI-driven EDA tooling. Combines RTL design and functional verification
+      internship experience with hands-on development of LangGraph-based
+      multi-agent frameworks that automate RTL-to-GDS workflows. Comfortable
+      operating across the full stack — from Verilog RTL to Python automation
+      to LLM-integrated design/verification pipelines.
+
+education:
+  - id: cbit_be_ece
+    institution: Chaitanya Bharathi Institute of Technology (CBIT)
+    location: Hyderabad, Telangana, India
+    degree: Bachelor of Engineering (B.E.)
+    area: Electronics and Communication Engineering
+    start_date: 2023-09
+    end_date: 2027-05
+    highlight_bank:
+      - id: edu_h1
+        text: "CGPA: 9.17 / 10 (consistently among top academic performers in the department)"
+      - id: edu_h2
+        text: >
+          Relevant Coursework: MOS Device Physics (second-order effects, SOA,
+          snapback, leakage mechanisms), Analog Electronics, VLSI Design
+          (CMOS & Linear ICs), Digital Design, Computer Architecture,
+          Semiconductor/CMOS Circuit Design
+      - id: edu_h3
+        text: "Relevant Coursework (short form): MOS Device Physics, Analog Electronics, VLSI Design, Digital Design, Computer Architecture"
+    default_highlights: [edu_h1, edu_h2]
+
+experience:
+  - id: tessolve_dv_intern
+    company: Tessolve Semiconductors
+    location: Bengaluru, Karnataka, India
+    position: RTL Design & Verification Intern
+    start_date: 2026-06
+    end_date: 2026-10
+    highlight_bank:
+      - id: dv_h1
+        tags: [rtl, verilog]
+        text: "Designing and verifying digital RTL modules using Verilog HDL in a Linux-based, industry-standard EDA environment."
+      - id: dv_h2
+        tags: [systemverilog, uvm]
+        text: "Learning industry-standard verification methodologies including SystemVerilog, UVM, and constrained-random verification."
+      - id: dv_h3
+        tags: [cocotb, pyuvm, simulation]
+        text: "Building and debugging simulation environments using ModelSim, Icarus Verilog, Cocotb, and PyUVM."
+      - id: dv_h4
+        tags: [fsm, fifo, bus_protocol, apb, axi]
+        text: "Working with digital design concepts including FSMs, FIFOs, memories, bus protocols (APB/AXI), and verification testbenches."
+      - id: dv_h5
+        tags: [coverage, stimulus, functional_verification]
+        text: "Applying functional verification methodologies — stimulus generation, simulation control, and coverage tracking — to validate RTL designs."
+      - id: dv_h6
+        tags: [debug, waveform]
+        text: "Performing waveform analysis, simulation debugging, and functional validation of RTL designs to identify root causes and implement targeted corrections."
+      - id: dv_h7
+        tags: [linux, git, eda_tools]
+        text: "Using Linux, Git, and industry-standard EDA tools as part of the hardware verification workflow."
+      - id: dv_h8
+        tags: [testbench_architecture]
+        text: "Building and debugging structured verification environments consisting of testbench architectures, simulation execution, and waveform-based debug analysis."
+    default_highlights: [dv_h1, dv_h2, dv_h3, dv_h5, dv_h6]
+
+  - id: tessolve_pd_intern
+    company: Tessolve Semiconductors
+    location: Hyderabad, Telangana, India
+    position: Physical Design & STA Intern
+    start_date: 2025-12
+    end_date: 2026-01
+    highlight_bank:
+      - id: pd_h1
+        tags: [rtl_to_gdsii, physical_design, synthesis, pnr]
+        text: "Gained end-to-end exposure to the ASIC physical design flow and RTL-to-GDSII implementation process (synthesis, floorplanning, P&R, and timing signoff)."
+      - id: pd_h2
+        tags: [cadence, genus, innovus]
+        text: "Assisted in synthesis and place-and-route (P&R) flows using Cadence Genus and Cadence Innovus in a Linux-based VLSI environment."
+      - id: pd_h3
+        tags: [sta, timing]
+        text: "Studied basic Static Timing Analysis (STA) concepts, analyzing timing reports to evaluate setup/hold margins, identify critical paths, and understand optimization trade-offs."
+      - id: pd_h4
+        tags: [sdc, constraints]
+        text: "Reviewed SDC constraint files to understand clock definitions, I/O delays, and timing exceptions applied during synthesis."
+      - id: pd_h5
+        tags: [linux]
+        text: "Learned Linux fundamentals and gained deep familiarity working inside a Linux-based EDA development environment."
+    default_highlights: [pd_h1, pd_h2, pd_h3, pd_h4]
+
+  - id: nss_cbit
+    company: NSS CBIT
+    location: Hyderabad, Telangana, India
+    position: Incharge - External Affairs
+    start_date: 2024-08
+    end_date: 2025-05
+    highlight_bank:
+      - id: nss_h1
+        tags: [leadership, coordination]
+        text: "Worked closely with the Executive Board of the club to manage all associated external relations."
+      - id: nss_h2
+        tags: [outreach, community]
+        text: "Actively coordinated partnerships and outreach programs to enhance community service initiatives."
+    default_highlights: [nss_h1, nss_h2]
+
+projects:
+  - id: rtl2gds_agent
+    name: AI-Driven RTL-to-GDS Agentic Framework (RTL2GDS-Agent)
+    links:
+      - label: GitHub
+        url: https://github.com/ShashankT-ECE/rtl2gds-agent
+    highlight_bank:
+      - id: r2g_h1
+        tags: [langgraph, multi_agent, automation]
+        text: "Designed a LangGraph-based multi-agent AI framework automating the full RTL-to-GDS cycle: specification analysis, RTL generation, testbench creation, simulation-driven debugging, logic synthesis, and timing analysis."
+      - id: r2g_h2
+        tags: [cocotb, closed_loop, verification]
+        text: "Implemented a closed-loop verification engine using Cocotb, Icarus Verilog, and Python that autonomously detects simulation failures, diagnoses RTL defects, and generates corrective fixes to minimize manual debug cycles."
+      - id: r2g_h3
+        tags: [benchmarks, metrics]
+        text: "Achieved 25/25 successful benchmark runs and 25/25 successful synthesis runs (100% success rate) across 5 designs including ALU, FIFO, FSM, UART, and APB bus."
+      - id: r2g_h4
+        tags: [bug_injection, evaluation, metrics]
+        text: "Built a bug-injection evaluation suite spanning control, counter, reset, flag-generation, and address-decoding defect categories, achieving 10/10 automatic bug detection and 9/10 automatic single-line RTL repairs through the agentic loop."
+      - id: r2g_h5
+        tags: [sta, opensta]
+        text: "Integrated a Static Timing Analysis (STA) agent utilizing OpenSTA into the active workflow pipeline."
+    default_highlights: [r2g_h1, r2g_h2, r2g_h3, r2g_h4]
+
+  - id: pyuvm_framework
+    name: pyUVM-Based Verification Automation Framework
+    highlight_bank:
+      - id: puvm_h1
+        tags: [pyuvm, uvm, python]
+        text: "Developed a Python-based functional verification automation framework using pyUVM methodology with reusable, UVM-inspired components including sequencers, drivers, monitors, and scoreboards."
+      - id: puvm_h2
+        tags: [coverage, assertions]
+        text: "Targeting coverage-aware, assertion-driven test generation for RTL IP blocks designed to integrate seamlessly into the RTL2GDS-Agent pipeline."
+    default_highlights: [puvm_h1, puvm_h2]
+
+  - id: fpga_image_accel
+    name: FPGA-Based Image Enhancement Accelerator
+    highlight_bank:
+      - id: fpga_h1
+        tags: [fpga, kria, dpu]
+        text: "Developed and deployed an FPGA-accelerated image enhancement system on the Xilinx Kria KV260 platform, running an SRCNN super-resolution model on the onboard DPU for accelerated inference."
+      - id: fpga_h2
+        tags: [verilog, rtl, preprocessing]
+        text: "Designed custom Verilog RTL modules for RGB-to-YCbCr color space conversion, offloading intensive preprocessing algorithms to dedicated FPGA hardware blocks."
+      - id: fpga_h3
+        tags: [hw_sw_codesign]
+        text: "Integrated custom hardware preprocessing with DPU-accelerated model inference using a comprehensive hardware-software co-design methodology."
+      - id: fpga_h4
+        tags: [award]
+        text: "Won First Place at a National AI + FPGA Hackathon for this deployment."
+    default_highlights: [fpga_h1, fpga_h2, fpga_h4]
+
+  - id: cmos_logic_design
+    name: CMOS Digital Logic Gate Design (Cadence Virtuoso)
+    highlight_bank:
+      - id: cmos_h1
+        tags: [virtuoso, cmos, analog, schematic]
+        text: "Designed and simulated CMOS schematics for fundamental building blocks including inverters, NAND, NOR, XOR, 2:1 MUX, pass-transistor logic, and a 4:1 MUX using transmission gates across multiple VLSI coursework labs."
+      - id: cmos_h2
+        tags: [simulation, waveform, verification]
+        text: "Verified correct logic functionality and performance of each design through transient simulation and waveform analysis in Cadence Virtuoso."
+    default_highlights: [cmos_h1, cmos_h2]
+
+  - id: sih_dewatering
+    name: Solar-Powered Smart Dewatering System (Smart India Hackathon Winner)
+    links:
+      - label: GitHub
+        url: https://github.com/ShashankT-ECE
+    highlight_bank:
+      - id: sih_h1
+        tags: [leadership, systems]
+        text: "Led a six-member team to design, engineer, and demonstrate an autonomous, solar-powered dewatering solution for mining operations."
+      - id: sih_h2
+        tags: [iot, systems_integration]
+        text: "Engineered an end-to-end solution integrating renewable energy deployment, pumping infrastructure, IIoT-based remote monitoring, and comprehensive operational automation."
+      - id: sih_h3
+        tags: [award, impact]
+        text: "Secured First Place (National Winner) at Smart India Hackathon 2025; the solution was selected for an official pilot deployment by the Ministry of Mines, Government of India."
+    default_highlights: [sih_h1, sih_h2, sih_h3]
+
+technical_skills:
+  - label: HDL & Hardware Design
+    tags: [rtl, verilog, systemverilog, digital_ic]
+    details: "Verilog HDL, SystemVerilog (in progress), RTL Design, SoC Architecture Concepts, Digital IC Design, DFT Basics"
+  - label: VLSI, ASIC & Physical Design
+    tags: [physical_design, synthesis, pnr, sta, sdc]
+    details: "RTL-to-GDSII Flow, Logic Synthesis, Place & Route (P&R), Static Timing Analysis (STA basics), Timing Closure Fundamentals, SDC Constraints"
+  - label: Verification Methodologies
+    tags: [verification, uvm, pyuvm, cocotb, coverage, assertions]
+    details: "Functional Verification, Testbench Development, Simulation-Driven Debug, pyUVM, Cocotb, UVM (concepts), Constrained-Random Verification, Coverage-Driven Verification, SVA Assertions (basics)"
+  - label: Tools & EDA Platforms
+    tags: [cadence, genus, innovus, virtuoso, modelsim, yosys, opensta, linux, git]
+    details: "Cadence Genus (Synthesis), Cadence Innovus (P&R), Cadence Virtuoso, ModelSim, Icarus Verilog, Open-Source EDA Tools (Yosys, OpenSTA), Linux, Git"
+  - label: Analog & Device Physics
+    tags: [analog, mixed_signal, mos_physics, cmos]
+    details: "MOS Device Physics (Second-order effects, SOA, snapback, leakage), CMOS Circuit Design, Analog Building Blocks (Op-amps, Current Mirrors, BGR, Regulators, ADC, DAC)"
+  - label: AI, Software & Automation
+    tags: [ai, langgraph, python, automation, llm]
+    details: "LangGraph, Multi-Agent Frameworks, LLM-Integrated Hardware Workflows, Workflow Scripting, Python, Shell Scripting, AI-Assisted (Vibe Coding) Automation"
+  - label: FPGA Platforms
+    tags: [fpga, kria, dpu]
+    details: "Xilinx Kria KV260, DPU Integration, Hardware-Software Co-Design"
+
+achievements_and_recognition:
+  - id: ach_sih
+    tags: [award, leadership]
+    text: "Winner (1st Place, National Level) — Smart India Hackathon 2025. Hardware-software solution selected for active deployment by the Ministry of Mines, Government of India."
+  - id: ach_fpga
+    tags: [award, fpga]
+    text: "Winner — AI + FPGA National Hackathon. Recognized for optimized hardware-software co-design with ML acceleration on a Xilinx FPGA platform."
+  - id: ach_cgpa
+    tags: [academic]
+    text: "Academic Excellence — Maintained a 9.17/10 CGPA, consistently positioning within the top tier of the B.E. Electronics and Communication Engineering cohort."

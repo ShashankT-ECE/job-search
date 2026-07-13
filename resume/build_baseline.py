@@ -56,6 +56,30 @@ SECTION_TITLE_MAP = {
 # Helper functions
 # ──────────────────────────────────────────────────────────────────────
 
+def _resolve_from_bank(bank, ids: list[str]) -> list[str]:
+    """Resolve a list of IDs against a highlight_bank or summary_bank.
+
+    The bank may be:
+      - A flat dict: {id: text, ...}
+      - A list of dicts: [{id: ..., text: ...}, ...]
+    """
+    resolved = []
+    for hid in ids:
+        text = None
+        if isinstance(bank, dict):
+            text = bank.get(hid)
+        elif isinstance(bank, list):
+            for item in bank:
+                if isinstance(item, dict) and item.get("id") == hid:
+                    text = item.get("text")
+                    break
+        if text is not None:
+            resolved.append(str(text).strip())
+        else:
+            print(f"  WARNING: highlight ID '{hid}' not found in bank, skipping")
+    return resolved
+
+
 def resolve_highlights(entry: dict) -> list[str] | None:
     """Given an entry dict with `highlight_bank` and `default_highlights`,
     resolve the default highlight IDs to their full text.
@@ -68,24 +92,37 @@ def resolve_highlights(entry: dict) -> list[str] | None:
     if not default_ids:
         return None
 
-    resolved = []
-    for hid in default_ids:
-        text = highlight_bank.get(hid)
-        if text is not None:
-            resolved.append(text.strip())
-        else:
-            print(f"  WARNING: highlight ID '{hid}' not found in highlight_bank, skipping")
-
+    resolved = _resolve_from_bank(highlight_bank, default_ids)
     return resolved if resolved else None
 
 
-def pick_summary(summary_bank: dict, preferred_id: str = DEFAULT_SUMMARY_ID) -> str | None:
-    """Pick a summary from the summary_bank. Falls back to the first entry."""
+def pick_summary(summary_bank, preferred_id: str = DEFAULT_SUMMARY_ID) -> str | None:
+    """Pick a summary from the summary_bank. Falls back to the first entry.
+
+    summary_bank may be:
+      - A flat dict: {id: text, ...}
+      - A list of dicts: [{id: ..., text: ...}, ...]
+    """
     if not summary_bank:
         return None
+
+    # If it's a list of dicts, resolve by id
+    if isinstance(summary_bank, list):
+        # Find the preferred entry
+        for item in summary_bank:
+            if isinstance(item, dict) and item.get("id") == preferred_id:
+                return str(item.get("text", "")).strip()
+        # Fall back to first entry
+        first = summary_bank[0]
+        if isinstance(first, dict):
+            first_id = first.get("id", "?")
+            print(f"  WARNING: '{preferred_id}' not found in summary_bank, using '{first_id}' instead")
+            return str(first.get("text", "")).strip()
+        return None
+
+    # Flat dict format
     if preferred_id in summary_bank:
         return summary_bank[preferred_id].strip()
-    # Fall back to first entry
     first_key = next(iter(summary_bank))
     print(f"  WARNING: '{preferred_id}' not found in summary_bank, using '{first_key}' instead")
     return summary_bank[first_key].strip()
@@ -169,9 +206,9 @@ def build_cv_sections(data: dict) -> dict:
     if project_entries:
         sections["Projects"] = project_entries
 
-    # --- Skills (OneLineEntry) ---
+    # --- Skills (OneLineEntry) — supports both "skills" and "technical_skills" ---
     skills_entries = []
-    for entry in data.get("skills", []):
+    for entry in data.get("technical_skills", data.get("skills", [])):
         sk = {
             "label": entry.get("label", ""),
             "details": entry.get("details", ""),
@@ -181,6 +218,16 @@ def build_cv_sections(data: dict) -> dict:
 
     if skills_entries:
         sections["Skills"] = skills_entries
+
+    # --- Achievements & Recognition (BulletEntry) ---
+    achievements_entries = []
+    for entry in data.get("achievements_and_recognition", data.get("achievements", [])):
+        text = entry.get("text") if isinstance(entry, dict) else entry
+        if text:
+            achievements_entries.append({"bullet": str(text).strip()})
+
+    if achievements_entries:
+        sections["Honors & Awards"] = achievements_entries
 
     # --- Publications ---
     publication_entries = []
@@ -234,28 +281,57 @@ def build_design_section() -> dict:
     }
 
 
-def build_rendercv_yaml(data: dict, today_str: str = "2026-07-13") -> dict:
-    """Build the complete RenderCV YAML structure from the bullet-bank data."""
-    personal = data.get("personal_info", {})
+def _extract_username_from_url(url: str) -> str:
+    """Extract a username/handle from a social profile URL."""
+    from urllib.parse import urlparse
+    path = urlparse(str(url).rstrip("/")).path
+    # e.g. /in/shashank-tumuluri/ → shashank-tumuluri
+    return path.strip("/").split("/")[-1]
 
-    # Build social_networks
+
+def build_rendercv_yaml(data: dict, today_str: str = "2026-07-13") -> dict:
+    """Build the complete RenderCV YAML structure from the bullet-bank data.
+
+    Supports two personal-info formats:
+      - data["personal_info"]  (example format: social_networks with network + username)
+      - data["cv"]             (real format: links with label + url)
+    """
+    # Detect which format we're reading
+    personal = data.get("cv", data.get("personal_info", {}))
+
+    # Build social_networks — convert links (label + url) or pass through
     social_networks = []
-    for sn in personal.get("social_networks", []):
-        social_networks.append({
-            "network": sn.get("network", ""),
-            "username": sn.get("username", ""),
-        })
+    for link in personal.get("links", personal.get("social_networks", [])):
+        if "url" in link:
+            # Convert label+url format → network+username
+            label = link.get("label", "")
+            url = link.get("url", "")
+            username = _extract_username_from_url(url)
+            # The label usually matches RenderCV's controlled network names
+            social_networks.append({
+                "network": label,
+                "username": username,
+            })
+        else:
+            # Already in network+username format
+            social_networks.append({
+                "network": link.get("network", ""),
+                "username": link.get("username", ""),
+            })
 
     # Build CV section — skip empty/None phone (phonenumbers lib is strict)
     raw_phone = personal.get("phone")
     phone = raw_phone if raw_phone and str(raw_phone).strip() else None
+
+    # Website: use explicit website field if present, otherwise first non-social link
+    website = personal.get("website")
 
     cv = {
         "name": personal.get("name", ""),
         "location": personal.get("location"),
         "email": personal.get("email"),
         "phone": phone,
-        "website": personal.get("website"),
+        "website": website,
         "social_networks": social_networks if social_networks else None,
         "sections": build_cv_sections(data),
         "sort_entries": "reverse-chronological",
